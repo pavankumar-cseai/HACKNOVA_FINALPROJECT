@@ -342,7 +342,7 @@ export default function SpeechToTextClient() {
                            <span className="text-xs font-bold">...</span>
                         </span>
                         <h3 className="font-semibold">2. Filler & Repetition Removal</h3>
-                        <p className="text-sm text-muted-foreground">"Umms", "ahhs", and repeated phrases are eliminated.</p>
+                        <p className="text-sm text-muted-foreground">“umm”, “uhh”, “ehh”, “you know”, “like”, “matlab”,etc</p>
                     </li>
                     <li className="ml-6">
                         <span className="absolute flex items-center justify-center w-6 h-6 bg-primary rounded-full -left-3 ring-4 ring-background text-primary-foreground">
