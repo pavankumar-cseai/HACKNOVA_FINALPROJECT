@@ -30,19 +30,10 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 
 import { transcribeSpeech } from "@/ai/flows/transcribe-speech";
-import { removeFillerWords } from "@/ai/flows/remove-filler-words";
-import { eliminateRepetitions } from "@/ai/flows/eliminate-repetitions";
-import { correctGrammarAndFormat } from "@/ai/flows/correct-grammar-and-format";
-import { adjustToneAndStyle } from "@/ai/flows/adjust-tone-and-style";
+import { processText } from "@/ai/flows/process-text";
 
 type Style = "Formal" | "Casual" | "Concise" | "Neutral";
-type LatencySteps =
-  | "Transcription"
-  | "Filler Word Removal"
-  | "Repetition Removal"
-  | "Grammar Correction"
-  | "Tone & Style"
-  | "Total";
+type LatencySteps = "Transcription" | "Text Processing" | "Total";
 
 export default function SpeechToTextClient() {
   const [isRecording, setIsRecording] = useState(false);
@@ -92,7 +83,9 @@ export default function SpeechToTextClient() {
           "Could not access the microphone. Please check your browser permissions.",
         variant: "destructive",
       });
-      setRawText("Microphone access denied. Please enable it in your browser settings.");
+      setRawText(
+        "Microphone access denied. Please enable it in your browser settings."
+      );
     }
   };
 
@@ -106,7 +99,6 @@ export default function SpeechToTextClient() {
 
   const processAudio = (audioBlob: Blob) => {
     startTransition(async () => {
-      let currentText = "";
       const newLatencies: Partial<Record<LatencySteps, number>> = {};
       let totalLatency = 0;
 
@@ -116,69 +108,38 @@ export default function SpeechToTextClient() {
           reader.onloadend = () => resolve(reader.result as string);
           reader.readAsDataURL(audioBlob);
         });
-        
+
         let startTime, endTime, stepLatency;
-        
+
         // 1. Transcription
         startTime = performance.now();
         const transcriptionResult = await transcribeSpeech({ audioDataUri });
         endTime = performance.now();
         stepLatency = endTime - startTime;
         totalLatency += stepLatency;
-        currentText = transcriptionResult.transcription;
-        setRawText(currentText);
+        const transcribedText = transcriptionResult.transcription;
+        setRawText(transcribedText);
         newLatencies["Transcription"] = stepLatency;
         setLatencies({ ...newLatencies });
-        setProcessedText("Processing: Removing filler words...");
+        setProcessedText("Processing: Polishing text...");
 
-        // 2. Filler Word Removal
+        // 2. All Text Processing
         startTime = performance.now();
-        const fillerResult = await removeFillerWords({ text: currentText });
+        const processingResult = await processText({
+          text: transcribedText,
+          style: selectedStyle,
+        });
         endTime = performance.now();
         stepLatency = endTime - startTime;
         totalLatency += stepLatency;
-        currentText = fillerResult.cleanedText;
-        newLatencies["Filler Word Removal"] = stepLatency;
-        setLatencies({ ...newLatencies });
-        setProcessedText("Processing: Eliminating repetitions...");
-
-        // 3. Repetition Removal
-        startTime = performance.now();
-        const repetitionResult = await eliminateRepetitions({ text: currentText });
-        endTime = performance.now();
-        stepLatency = endTime - startTime;
-        totalLatency += stepLatency;
-        currentText = repetitionResult.cleanedText;
-        newLatencies["Repetition Removal"] = stepLatency;
-        setLatencies({ ...newLatencies });
-        setProcessedText("Processing: Correcting grammar...");
-        
-        // 4. Grammar Correction
-        startTime = performance.now();
-        const grammarResult = await correctGrammarAndFormat({ text: currentText });
-        endTime = performance.now();
-        stepLatency = endTime - startTime;
-        totalLatency += stepLatency;
-        currentText = grammarResult.formattedText;
-        newLatencies["Grammar Correction"] = stepLatency;
-        setLatencies({ ...newLatencies });
-        setProcessedText("Processing: Adjusting tone and style...");
-
-        // 5. Tone and Style Adjustment
-        startTime = performance.now();
-        const toneResult = await adjustToneAndStyle({ text: currentText, style: selectedStyle });
-        endTime = performance.now();
-        stepLatency = endTime - startTime;
-        totalLatency += stepLatency;
-        currentText = toneResult.adjustedText;
-        newLatencies["Tone & Style"] = stepLatency;
+        newLatencies["Text Processing"] = stepLatency;
         newLatencies["Total"] = totalLatency;
         setLatencies({ ...newLatencies });
-        setProcessedText(currentText);
-
+        setProcessedText(processingResult.processedText);
       } catch (error) {
         console.error("Processing failed:", error);
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+        const errorMessage =
+          error instanceof Error ? error.message : "An unknown error occurred.";
         toast({
           title: "Processing Error",
           description: `Failed to process audio. ${errorMessage}`,
@@ -197,7 +158,8 @@ export default function SpeechToTextClient() {
           <div className="space-y-1.5">
             <CardTitle>Dictation Controls</CardTitle>
             <CardDescription>
-              Click record, speak, and stop. Your text will be processed automatically.
+              Click record, speak, and stop. Your text will be processed
+              automatically.
             </CardDescription>
           </div>
           <div className="flex items-center gap-4">
@@ -293,7 +255,10 @@ export default function SpeechToTextClient() {
                   {(Object.keys(latencies) as LatencySteps[])
                     .filter((step) => step !== "Total")
                     .map((step) => (
-                      <li key={step} className="flex justify-between items-center">
+                      <li
+                        key={step}
+                        className="flex justify-between items-center"
+                      >
                         <span>{step}</span>
                         <span className="text-muted-foreground">
                           {latencies[step]?.toFixed(0)}ms
@@ -304,7 +269,7 @@ export default function SpeechToTextClient() {
                 <Separator className="my-3" />
                 <div
                   className={`flex justify-between font-bold font-code text-base ${
-                    latencies.Total != null && latencies.Total > 2500
+                    latencies.Total != null && latencies.Total > 2000
                       ? "text-destructive"
                       : "text-[hsl(var(--chart-2))]"
                   }`}
@@ -321,45 +286,37 @@ export default function SpeechToTextClient() {
           </CardContent>
         </Card>
         <Card className="md:col-span-2">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Bot className="w-5 h-5" />
-                    How It Works
-                </CardTitle>
-                <CardDescription>The intelligent pipeline that transforms your speech.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <ol className="relative border-l border-border/50 space-y-4">
-                    <li className="ml-6">
-                        <span className="absolute flex items-center justify-center w-6 h-6 bg-primary rounded-full -left-3 ring-4 ring-background text-primary-foreground">
-                            <Mic className="w-3.5 h-3.5" />
-                        </span>
-                        <h3 className="font-semibold">1. Transcription</h3>
-                        <p className="text-sm text-muted-foreground">Your speech is converted to raw text in real-time.</p>
-                    </li>
-                    <li className="ml-6">
-                        <span className="absolute flex items-center justify-center w-6 h-6 bg-primary rounded-full -left-3 ring-4 ring-background text-primary-foreground">
-                           <span className="text-xs font-bold">...</span>
-                        </span>
-                        <h3 className="font-semibold">2. Filler & Repetition Removal</h3>
-                        <p className="text-sm text-muted-foreground">"Umms", "ahhs", and repeated phrases are eliminated.</p>
-                    </li>
-                    <li className="ml-6">
-                        <span className="absolute flex items-center justify-center w-6 h-6 bg-primary rounded-full -left-3 ring-4 ring-background text-primary-foreground">
-                           <span className="font-bold">A!</span>
-                        </span>
-                        <h3 className="font-semibold">3. Grammar & Formatting</h3>
-                        <p className="text-sm text-muted-foreground">Punctuation, capitalization, and structure are corrected.</p>
-                    </li>
-                    <li className="ml-6">
-                        <span className="absolute flex items-center justify-center w-6 h-6 bg-accent rounded-full -left-3 ring-4 ring-background text-accent-foreground">
-                            <ChevronRight className="w-3.5 h-3.5" />
-                        </span>
-                        <h3 className="font-semibold">4. Tone & Style Adjustment</h3>
-                        <p className="text-sm text-muted-foreground">The final text is adapted to your selected style.</p>
-                    </li>
-                </ol>
-            </CardContent>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="w-5 h-5" />
+              How It Works
+            </CardTitle>
+            <CardDescription>
+              The intelligent pipeline that transforms your speech.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ol className="relative border-l border-border/50 space-y-4">
+              <li className="ml-6">
+                <span className="absolute flex items-center justify-center w-6 h-6 bg-primary rounded-full -left-3 ring-4 ring-background text-primary-foreground">
+                  <Mic className="w-3.5 h-3.5" />
+                </span>
+                <h3 className="font-semibold">1. Transcription</h3>
+                <p className="text-sm text-muted-foreground">
+                  Your speech is converted to raw text in real-time.
+                </p>
+              </li>
+              <li className="ml-6">
+                <span className="absolute flex items-center justify-center w-6 h-6 bg-accent rounded-full -left-3 ring-4 ring-background text-accent-foreground">
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </span>
+                <h3 className="font-semibold">2. Intelligent Processing</h3>
+                <p className="text-sm text-muted-foreground">
+                  A single AI call removes fillers, corrects grammar, and adjusts style.
+                </p>
+              </li>
+            </ol>
+          </CardContent>
         </Card>
       </div>
     </div>
