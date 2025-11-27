@@ -44,7 +44,7 @@ type LatencySteps =
   | "Tone & Style"
   | "Total";
 
-export default function VerbatimFlowClient() {
+export default function SpeechToTextClient() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, startTransition] = useTransition();
   const [rawText, setRawText] = useState("");

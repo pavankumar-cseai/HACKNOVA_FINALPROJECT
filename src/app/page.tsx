@@ -1,5 +1,5 @@
 import { Logo } from '@/components/icons';
-import VerbatimFlowClient from '@/components/verbatim-flow-client';
+import SpeechToTextClient from '@/components/verbatim-flow-client';
 
 export default function Home() {
   return (
@@ -8,12 +8,12 @@ export default function Home() {
         <div className="container mx-auto flex items-center gap-3">
           <Logo className="w-8 h-8" />
           <h1 className="text-2xl font-bold font-headline tracking-tight">
-            VerbatimFlow
+            Speech to Text Intelligent AI
           </h1>
         </div>
       </header>
       <main className="flex-grow p-4 md:p-8 container mx-auto">
-        <VerbatimFlowClient />
+        <SpeechToTextClient />
       </main>
       <footer className="text-center p-4 text-muted-foreground text-sm">
         <p>An Intelligent Low-Latency Speech Dictation Engine.</p>

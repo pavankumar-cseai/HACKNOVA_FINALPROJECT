@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: 'VerbatimFlow',
+  title: 'Speech to Text Intelligent AI',
   description: 'An Intelligent Low-Latency Speech Dictation Engine',
 };
 
