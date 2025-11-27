@@ -1,5 +1,5 @@
 import { Logo } from '@/components/icons';
-import SpeechToTextClient from '@/components/speech-to-text-client';
+import VerbatimFlowClient from '@/components/verbatim-flow-client';
 
 export default function Home() {
   return (
@@ -13,7 +13,7 @@ export default function Home() {
         </div>
       </header>
       <main className="flex-grow p-4 md:p-8 container mx-auto">
-        <SpeechToTextClient />
+        <VerbatimFlowClient />
       </main>
       <footer className="text-center p-4 text-muted-foreground text-sm">
         <p>An Intelligent Low-Latency Speech Dictation Engine.</p>
