@@ -1,5 +1,5 @@
 import { Logo } from '@/components/icons';
-import SpeechToTextClient from '@/components/verbatim-flow-client';
+import SpeechToTextClient from '@/components/speech-to-text-client';
 
 export default function Home() {
   return (
