@@ -70,7 +70,8 @@ export default function SpeechToTextClient() {
         stream.getTracks().forEach((track) => track.stop());
       };
 
-      mediaRecorder.start();
+      // Start recording with a timeslice to get data in chunks
+      mediaRecorder.start(1000);
       setIsRecording(true);
       setRawText("Recording... Speak now.");
       setProcessedText("");
@@ -103,6 +104,16 @@ export default function SpeechToTextClient() {
       let totalLatency = 0;
 
       try {
+        if (audioBlob.size === 0) {
+          toast({
+            title: "No audio recorded",
+            description: "Please try speaking for a longer duration.",
+            variant: "destructive",
+          });
+          setRawText("No audio was recorded. Please try again.");
+          return;
+        }
+
         const audioDataUri = await new Promise<string>((resolve) => {
           const reader = new FileReader();
           reader.onloadend = () => resolve(reader.result as string);
